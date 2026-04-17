@@ -1,6 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "workspace": {
+    "ignoreDir": ["node_modules"],
+  },
   "diagnostics": {
     "libraryFiles": "Disable",
+    "ignoredFiles": "Disable",
   },
 }

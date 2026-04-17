@@ -1,0 +1,16 @@
+{
+  "name": "packlazy.nvim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "make test",
+    "commitlint": "commitlint --from=HEAD~1",
+    "clean": "git clean -fdx node_modules && make clean",
+    "postinstall": "make install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@types/bun": "latest"
+  }
+}
