@@ -6,11 +6,12 @@
     "test": "make test",
     "commitlint": "commitlint --from=HEAD~1",
     "clean": "git clean -fdx node_modules && make clean",
-    "postinstall": "make install"
+    "postinstall": "lefthook install && make install"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "lefthook": "^2.1.6"
   }
 }

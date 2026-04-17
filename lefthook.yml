@@ -1,0 +1,8 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: test
+      run: bun run test
+
+    - name: commitlint
+      run: bun run commitlint
