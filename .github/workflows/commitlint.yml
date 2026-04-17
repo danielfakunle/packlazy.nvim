@@ -9,7 +9,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  test:
+  commitlint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
