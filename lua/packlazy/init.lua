@@ -2,6 +2,9 @@ local setup = require("packlazy.config").setup
 local util = require("packlazy.util")
 local state = require("packlazy.state")
 local loader = require("packlazy.loader")
+local handlers = {
+  lazy = require("packlazy.handlers.lazy"),
+}
 
 local M = {}
 
@@ -26,7 +29,9 @@ function M.add(plugins)
     local plugin_name = util.get_plugin_name(spec)
     if spec.lazy then
       state.plugins[plugin_name] = spec
-    else
+      handlers.lazy.register(spec)
+    end
+    if not spec.lazy then
       loader.load(spec)
     end
   end
