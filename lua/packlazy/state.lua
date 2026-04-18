@@ -1,7 +1,7 @@
 local M = {
-	plugins = {},
-	loading = {},
-	loaded = {},
+  plugins = {},
+  loading = {},
+  loaded = {},
 }
 
 return M
