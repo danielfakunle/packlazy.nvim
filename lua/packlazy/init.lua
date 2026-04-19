@@ -4,6 +4,7 @@ local state = require("packlazy.state")
 local loader = require("packlazy.loader")
 local handlers = {
   lazy = require("packlazy.handlers.lazy"),
+  event = require("packlazy.handlers.event"),
 }
 
 local M = {}
@@ -18,6 +19,7 @@ local M = {}
 ---@field dependencies? PluginSpec[] List of plugin specifications that this plugin depends on
 ---@field opts? table|fun():table Options to pass to the plugin's config function
 ---@field enabled? boolean|fun():boolean Whether to enable the plugin, defaults to true
+---@field event? string|string[]|{event:string|string[],pattern?:string} Lazy load on event(s), e.g. "BufRead"
 
 M.setup = setup
 
@@ -27,9 +29,12 @@ function M.add(plugins)
   spec_list = util.set_plugin_defaults(spec_list)
   for _, spec in ipairs(spec_list) do
     local plugin_name = util.get_plugin_name(spec)
+    state.plugins[plugin_name] = spec
     if spec.lazy then
-      state.plugins[plugin_name] = spec
       handlers.lazy.register(spec)
+    end
+    if spec.event then
+      handlers.event.register(spec)
     end
     if not spec.lazy then
       loader.load(spec)
