@@ -29,6 +29,7 @@ describe("packlazy", function()
       }
       package.loaded["packlazy.handlers.lazy"] = { register = function(_) end }
       package.loaded["packlazy.handlers.event"] = { register = function(_) end }
+      package.loaded["packlazy.handlers.cmd"] = { register = function(_) end }
 
       loaded_specs = {}
       notifications = {}

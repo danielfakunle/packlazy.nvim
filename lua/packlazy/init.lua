@@ -6,6 +6,7 @@ local errors = require("packlazy.errors")
 local handlers = {
   lazy = require("packlazy.handlers.lazy"),
   event = require("packlazy.handlers.event"),
+  cmd = require("packlazy.handlers.cmd"),
 }
 
 local M = {}
@@ -21,6 +22,7 @@ local M = {}
 ---@field opts? table|fun():table Options to pass to the plugin's config function
 ---@field enabled? boolean|fun():boolean Whether to enable the plugin, defaults to true
 ---@field event? string|string[]|{event:string|string[],pattern?:string} Lazy load on event(s), e.g. "BufRead"
+---@field cmd? string|string[]|fun():string[] Lazy load when command(s) are invoked
 
 M.setup = setup
 
@@ -37,6 +39,9 @@ function M.add(plugins)
       end
       if spec.event then
         handlers.event.register(spec)
+      end
+      if spec.cmd then
+        handlers.cmd.register(spec)
       end
       if not spec.lazy then
         local loaded, load_err = loader.load(spec)
