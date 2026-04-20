@@ -1,5 +1,6 @@
 local loader = require("packlazy.loader")
 local util = require("packlazy.util")
+local errors = require("packlazy.errors")
 
 local M = {}
 
@@ -9,7 +10,10 @@ function M.register(spec)
   table.insert(package.loaders, 1, function(name)
     if name == plugin_name or name:sub(1, #plugin_name + 1) == plugin_name .. "." then
       return function()
-        loader.load(spec)
+        local ok, err = loader.load(spec)
+        if ok == false then
+          errors.notify(err)
+        end
         return nil
       end
     end

@@ -2,6 +2,7 @@ local setup = require("packlazy.config").setup
 local util = require("packlazy.util")
 local state = require("packlazy.state")
 local loader = require("packlazy.loader")
+local errors = require("packlazy.errors")
 local handlers = {
   lazy = require("packlazy.handlers.lazy"),
   event = require("packlazy.handlers.event"),
@@ -28,16 +29,25 @@ function M.add(plugins)
   local spec_list = util.create_plugin_spec_list(plugins)
   spec_list = util.set_plugin_defaults(spec_list)
   for _, spec in ipairs(spec_list) do
-    local plugin_name = util.get_plugin_name(spec)
-    state.plugins[plugin_name] = spec
-    if spec.lazy then
-      handlers.lazy.register(spec)
-    end
-    if spec.event then
-      handlers.event.register(spec)
-    end
-    if not spec.lazy then
-      loader.load(spec)
+    local ok, err = xpcall(function()
+      local plugin_name = util.get_plugin_name(spec)
+      state.plugins[plugin_name] = spec
+      if spec.lazy then
+        handlers.lazy.register(spec)
+      end
+      if spec.event then
+        handlers.event.register(spec)
+      end
+      if not spec.lazy then
+        local loaded, load_err = loader.load(spec)
+        if loaded == false then
+          errors.notify(load_err)
+        end
+      end
+    end, debug.traceback)
+
+    if not ok then
+      errors.report(spec, "add", err)
     end
   end
 end

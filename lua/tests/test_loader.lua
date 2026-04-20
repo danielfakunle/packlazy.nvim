@@ -28,6 +28,7 @@ local function setup_env(child)
     state.plugins = {}
     state.loading = {}
     state.loaded = {}
+    state.failed = {}
 
     loader = require("packlazy.loader")
   ]])
@@ -205,63 +206,67 @@ describe("packlazy.loader", function()
     end)
 
     it("cleans loading state when init errors", function()
-      expect.error(function()
-        child.lua([[
-           loader.load({
-            "owner/fail.nvim",
-            init = function()
-              error("init exploded")
-            end,
-          })
-        ]])
-      end)
+      child.lua([[
+        load_ok, load_err = loader.load({
+          "owner/fail.nvim",
+          init = function()
+            error("init exploded")
+          end,
+        })
+      ]])
 
+      eq(child.lua_get("load_ok"), false)
+      eq(child.lua_get("type(load_err)"), "string")
       eq(child.lua_get("state.loading.fail == nil"), true)
       eq(child.lua_get("state.loaded.fail == nil"), true)
+      eq(child.lua_get("type(state.failed.fail)"), "string")
       eq(child.lua_get("#pack_add_calls"), 0)
     end)
 
     it("cleans loading state when setup errors", function()
-      expect.error(function()
-        child.lua([[
-          package.loaded.plugin = {
-            setup = function(_)
-              error("setup exploded")
-            end,
-          }
+      child.lua([[
+        package.loaded.plugin = {
+          setup = function(_)
+            error("setup exploded")
+          end,
+        }
 
-           loader.load({
-            "owner/plugin.nvim",
-            config = true,
-          })
-        ]])
-      end)
+        load_ok, load_err = loader.load({
+          "owner/plugin.nvim",
+          config = true,
+        })
+      ]])
 
+      eq(child.lua_get("load_ok"), false)
+      eq(child.lua_get("type(load_err)"), "string")
       eq(child.lua_get("state.loading.plugin == nil"), true)
       eq(child.lua_get("state.loaded.plugin == nil"), true)
+      eq(child.lua_get("type(state.failed.plugin)"), "string")
     end)
 
     it("cleans loading state for parent when dependency init errors", function()
-      expect.error(function()
-        child.lua([[
-           loader.load({
-            "owner/main.nvim",
-            dependencies = {
-              {
-                "owner/dep.nvim",
-                init = function()
-                  error("dep init exploded")
-                end,
-              },
+      child.lua([[
+        load_ok, load_err = loader.load({
+          "owner/main.nvim",
+          dependencies = {
+            {
+              "owner/dep.nvim",
+              init = function()
+                error("dep init exploded")
+              end,
             },
-          })
-        ]])
-      end)
+          },
+        })
+      ]])
 
+      eq(child.lua_get("load_ok"), false)
+      eq(child.lua_get("type(load_err)"), "string")
       eq(child.lua_get("state.loading.dep == nil"), true)
       eq(child.lua_get("state.loading.main == nil"), true)
       eq(child.lua_get("state.loaded.dep == nil"), true)
       eq(child.lua_get("state.loaded.main == nil"), true)
+      eq(child.lua_get("type(state.failed.dep)"), "string")
+      eq(child.lua_get("type(state.failed.main)"), "string")
       eq(child.lua_get("#pack_add_calls"), 0)
     end)
   end)

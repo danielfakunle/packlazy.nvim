@@ -1,5 +1,6 @@
 local state = require("packlazy.state")
 local util = require("packlazy.util")
+local errors = require("packlazy.errors")
 local config = require("packlazy.config").defaults
 
 local M = {}
@@ -19,20 +20,27 @@ end
 ---@param spec PluginSpec
 M.load = function(spec)
   local plugin_name = util.get_plugin_name(spec)
-  if not util.is_enabled(spec) then
-    M.packdel(spec)
-    return
-  end
+
   if state.loaded[plugin_name] or state.loading[plugin_name] then
-    return
+    return true
   end
 
   state.loading[plugin_name] = true
+  local should_mark_loaded = true
 
   local ok, err = xpcall(function()
+    if not util.is_enabled(spec) then
+      should_mark_loaded = false
+      M.packdel(spec)
+      return
+    end
+
     if spec.dependencies then
       for _, dep in ipairs(spec.dependencies) do
-        M.load(dep)
+        local dep_ok, dep_err = M.load(dep)
+        if dep_ok == false then
+          error(dep_err, 0)
+        end
       end
     end
 
@@ -56,10 +64,19 @@ M.load = function(spec)
 
   if not ok then
     state.loaded[plugin_name] = nil
-    error(err, 0)
+    local formatted_err = errors.format(spec, "load", err)
+    state.failed[plugin_name] = formatted_err
+    return false, formatted_err
   end
 
-  state.loaded[plugin_name] = true
+  if should_mark_loaded then
+    state.loaded[plugin_name] = true
+  else
+    state.loaded[plugin_name] = nil
+  end
+
+  state.failed[plugin_name] = nil
+  return true
 end
 
 return M

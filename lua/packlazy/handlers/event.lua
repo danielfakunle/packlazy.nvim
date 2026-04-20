@@ -1,5 +1,6 @@
 local loader = require("packlazy.loader")
 local util = require("packlazy.util")
+local errors = require("packlazy.errors")
 
 local M = {}
 local augroup = vim.api.nvim_create_augroup("packlazy", { clear = false })
@@ -77,7 +78,10 @@ function M.register(spec)
   vim.api.nvim_create_autocmd(events, {
     pattern = pattern,
     callback = function()
-      loader.load(spec)
+      local ok, err = loader.load(spec)
+      if ok == false then
+        errors.notify(err)
+      end
     end,
     once = true,
   })
@@ -86,7 +90,10 @@ function M.register(spec)
       vim.api.nvim_create_autocmd("User", {
         pattern = evt,
         callback = function()
-          loader.load(spec)
+          local ok, err = loader.load(spec)
+          if ok == false then
+            errors.notify(err)
+          end
         end,
         once = true,
       })
