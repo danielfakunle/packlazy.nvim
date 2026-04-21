@@ -3,6 +3,7 @@ local util = require("packlazy.util")
 local state = require("packlazy.state")
 local loader = require("packlazy.loader")
 local errors = require("packlazy.errors")
+local commands = require("packlazy.commands")
 local handlers = {
   lazy = require("packlazy.handlers.lazy"),
   event = require("packlazy.handlers.event"),
@@ -35,7 +36,10 @@ local M = {}
 ---@field remap? boolean Whether mapping is remapped
 ---@field nowait? boolean Whether mapping is nowait
 
-M.setup = setup
+M.setup = function(opts)
+  setup(opts)
+  commands.setup()
+end
 
 ---@param plugins string|PluginSpec|PluginSpec[]
 function M.add(plugins)
