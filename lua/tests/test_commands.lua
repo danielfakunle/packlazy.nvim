@@ -128,6 +128,33 @@ describe("packlazy.commands", function()
     eq(child.lua_get("pack_del_calls[1][1]"), "unused")
   end)
 
+  it("does not clean plugins that only differ by .nvim suffix", function()
+    child.lua([[
+      state.plugins["which-key"] = { "folke/which-key.nvim" }
+      pack_get_return = {
+        { spec = { name = "which-key.nvim" } },
+      }
+      created_user_commands.PackClean.callback({})
+    ]])
+
+    eq(child.lua_get("#pack_del_calls"), 0)
+    eq(child.lua_get("#notify_calls"), 1)
+    eq(child.lua_get("notify_calls[1].msg:find('no unused plugins to clean', 1, true) ~= nil"), true)
+  end)
+
+  it("does not clean packlazy itself", function()
+    child.lua([[
+      pack_get_return = {
+        { spec = { name = "packlazy.nvim", src = "https://github.com/daniel/packlazy.nvim" } },
+      }
+      created_user_commands.PackClean.callback({})
+    ]])
+
+    eq(child.lua_get("#pack_del_calls"), 0)
+    eq(child.lua_get("#notify_calls"), 1)
+    eq(child.lua_get("notify_calls[1].msg:find('no unused plugins to clean', 1, true) ~= nil"), true)
+  end)
+
   it("notifies when there are no unused plugins to clean", function()
     child.lua([[
       state.plugins.used = { "owner/used.nvim" }
@@ -161,5 +188,33 @@ describe("packlazy.commands", function()
     eq(child.lua_get("info_text:find('loaded_one | yes | yes | loaded', 1, true) ~= nil"), true)
     eq(child.lua_get("info_text:find('failed_one | yes | no | failed', 1, true) ~= nil"), true)
     eq(child.lua_get("info_text:find('unused_one | no | yes | unused', 1, true) ~= nil"), true)
+  end)
+
+  it("merges registered and installed names by canonical plugin key", function()
+    child.lua([[
+      state.plugins["which-key"] = { "folke/which-key.nvim" }
+      pack_get_return = {
+        { spec = { name = "which-key.nvim" } },
+      }
+
+      created_user_commands.PackInfo.callback({})
+      info_text = table.concat(last_info_lines, "\n")
+    ]])
+
+    eq(child.lua_get("info_text:find('which-key.nvim | yes | yes | unloaded', 1, true) ~= nil"), true)
+    eq(child.lua_get("info_text:find('which-key.nvim | no | yes | unused', 1, true) == nil"), true)
+  end)
+
+  it("shows packlazy as loaded in info output", function()
+    child.lua([[
+      pack_get_return = {
+        { spec = { name = "packlazy.nvim", src = "https://github.com/daniel/packlazy.nvim" } },
+      }
+
+      created_user_commands.PackInfo.callback({})
+      info_text = table.concat(last_info_lines, "\n")
+    ]])
+
+    eq(child.lua_get("info_text:find('packlazy.nvim | no | yes | loaded', 1, true) ~= nil"), true)
   end)
 end)
