@@ -18,9 +18,11 @@ local setup_commands_env = function()
     pack_del_calls = {}
     pack_get_return = {}
     pack_get_calls = 0
-    current_buf = nil
     created_buf = 0
+    opened_win = nil
+    opened_win_opts = nil
     last_info_lines = nil
+    keymap_calls = {}
 
     vim.api.nvim_create_user_command = function(name, callback, opts)
       created_user_commands[name] = { callback = callback, opts = opts }
@@ -46,13 +48,20 @@ local setup_commands_env = function()
       created_buf = created_buf + 1
       return created_buf
     end
-    vim.api.nvim_set_current_buf = function(buf)
-      current_buf = buf
-    end
     vim.api.nvim_set_option_value = function(_name, _value, _opts)
     end
     vim.api.nvim_buf_set_lines = function(_buf, _start, _end, _strict, lines)
       last_info_lines = lines
+    end
+    vim.api.nvim_open_win = function(buf, _enter, opts)
+      opened_win = buf
+      opened_win_opts = opts
+      return 1
+    end
+
+    vim.keymap = vim.keymap or {}
+    vim.keymap.set = function(mode, lhs, rhs, opts)
+      table.insert(keymap_calls, { mode = mode, lhs = lhs, rhs = rhs, opts = opts })
     end
 
     commands = require("packlazy.commands")
@@ -184,7 +193,12 @@ describe("packlazy.commands", function()
       info_text = table.concat(last_info_lines, "\n")
     ]])
 
-    eq(child.lua_get("current_buf"), 1)
+    eq(child.lua_get("opened_win"), 1)
+    eq(child.lua_get("opened_win_opts.relative"), "editor")
+    eq(child.lua_get("opened_win_opts.border"), "rounded")
+    eq(child.lua_get("#keymap_calls"), 1)
+    eq(child.lua_get("keymap_calls[1].lhs"), "q")
+    eq(child.lua_get("keymap_calls[1].opts.buffer"), 1)
     eq(child.lua_get("info_text:find('loaded_one | yes | yes | loaded', 1, true) ~= nil"), true)
     eq(child.lua_get("info_text:find('failed_one | yes | no | failed', 1, true) ~= nil"), true)
     eq(child.lua_get("info_text:find('unused_one | no | yes | unused', 1, true) ~= nil"), true)

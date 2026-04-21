@@ -189,8 +189,16 @@ local function open_info_buffer()
     table.insert(lines, "(no registered or installed plugins)")
   end
 
+  local editor_width = vim.o.columns
+  local editor_height = vim.o.lines - vim.o.cmdheight
+  local width = math.max(60, math.floor(editor_width * 0.8))
+  local height = math.max(10, math.floor(editor_height * 0.7))
+  width = math.min(width, editor_width)
+  height = math.min(height, editor_height)
+  local row = math.floor((editor_height - height) / 2)
+  local col = math.floor((editor_width - width) / 2)
+
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_current_buf(buf)
   set_buf_option(buf, "bufhidden", "wipe")
   set_buf_option(buf, "buftype", "nofile")
   set_buf_option(buf, "swapfile", false)
@@ -198,6 +206,22 @@ local function open_info_buffer()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   set_buf_option(buf, "modifiable", false)
   set_buf_option(buf, "filetype", "packinfo")
+
+  vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    style = "minimal",
+    border = "rounded",
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+  })
+
+  vim.keymap.set("n", "q", "<Cmd>close<CR>", {
+    buffer = buf,
+    silent = true,
+    nowait = true,
+  })
 end
 
 function M.setup()
