@@ -69,6 +69,9 @@ function M.set_plugin_defaults(spec_list)
     if spec.lazy == nil then
       spec.lazy = config.lazy
     end
+    if spec.opts ~= nil and spec.config == nil then
+      spec.config = true
+    end
     if spec.enabled == nil then
       spec.enabled = true
     end

@@ -5,7 +5,7 @@ local M = {}
 ---@field lazy boolean Whether to load plugins lazily by default
 M.defaults = {
   confirm = false,
-  lazy = true,
+  lazy = false,
 }
 
 M.setup = function(opts)

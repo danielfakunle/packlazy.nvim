@@ -223,8 +223,67 @@ describe("packlazy", function()
     ]])
 
     eq(child.lua_get("keys_registered"), 1)
-    eq(child.lua_get("lazy_registered"), 1)
+    eq(child.lua_get("lazy_registered"), 0)
     eq(child.lua_get("event_registered"), 0)
     eq(child.lua_get("cmd_registered"), 0)
+    eq(child.lua_get("loaded_specs"), { "owner/keys.nvim" })
+  end)
+
+  it("treats opts as config=true and loads plugin by default", function()
+    child.lua([[
+      package.loaded.packlazy = nil
+      package.loaded["packlazy.loader"] = {
+        load = function(spec)
+          table.insert(loaded_specs, {
+            repo = spec[1],
+            config = spec.config,
+          })
+          return true
+        end,
+        packdel = function(spec)
+          table.insert(deleted_specs, spec[1])
+          return true
+        end,
+      }
+
+      lazy_registered = 0
+      event_registered = 0
+      cmd_registered = 0
+      keys_registered = 0
+      loaded_specs = {}
+      deleted_specs = {}
+
+      package.loaded["packlazy.handlers.lazy"] = {
+        register = function(_)
+          lazy_registered = lazy_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.event"] = {
+        register = function(_)
+          event_registered = event_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.cmd"] = {
+        register = function(_)
+          cmd_registered = cmd_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.keys"] = {
+        register = function(_)
+          keys_registered = keys_registered + 1
+        end,
+      }
+
+      local state = require("packlazy.state")
+      state.plugins = {}
+
+      local packlazy = require("packlazy")
+      packlazy.add({ "owner/opts.nvim", opts = { answer = 42 } })
+    ]])
+
+    eq(child.lua_get("lazy_registered"), 0)
+    eq(child.lua_get("#loaded_specs"), 1)
+    eq(child.lua_get("loaded_specs[1].repo"), "owner/opts.nvim")
+    eq(child.lua_get("loaded_specs[1].config"), true)
   end)
 end)

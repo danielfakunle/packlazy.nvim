@@ -163,5 +163,35 @@ describe("packlazy.util", function()
 
       config.defaults.lazy = old_lazy
     end)
+
+    it("sets config=true when opts is provided and config is missing", function()
+      local spec_list = {
+        { "owner/with_opts.nvim", opts = { answer = 42 } },
+      }
+
+      util.set_plugin_defaults(spec_list)
+
+      eq(spec_list[1].config, true)
+    end)
+
+    it("does not override explicit config when opts is provided", function()
+      local spec_list = {
+        { "owner/with_opts.nvim", opts = { answer = 42 }, config = false },
+      }
+
+      util.set_plugin_defaults(spec_list)
+
+      eq(spec_list[1].config, false)
+    end)
+
+    it("uses lazy=false by default", function()
+      local spec_list = {
+        { "owner/default.nvim" },
+      }
+
+      util.set_plugin_defaults(spec_list)
+
+      eq(spec_list[1].lazy, false)
+    end)
   end)
 end)
