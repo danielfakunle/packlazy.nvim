@@ -14,7 +14,15 @@ end
 
 function M.packdel(spec)
   local plugin_name = util.get_plugin_name(spec)
-  vim.pack.del({ plugin_name })
+  local ok, err = pcall(vim.pack.del, { plugin_name })
+  if not ok then
+    if tostring(err):find("is not installed", 1, true) then
+      errors.notify("plugin `" .. plugin_name .. "` is not installed", "INFO")
+      return true
+    end
+    return false, errors.format(spec, "packdel", err)
+  end
+  return true
 end
 
 ---@param spec PluginSpec
@@ -26,20 +34,20 @@ M.load = function(spec)
   end
 
   state.loading[plugin_name] = true
-  local should_mark_loaded = true
 
   local ok, err = xpcall(function()
-    if not util.is_enabled(spec) then
-      should_mark_loaded = false
-      M.packdel(spec)
-      return
-    end
-
     if spec.dependencies then
       for _, dep in ipairs(spec.dependencies) do
-        local dep_ok, dep_err = M.load(dep)
-        if dep_ok == false then
-          error(dep_err, 0)
+        if not util.is_enabled(dep) then
+          local dep_deleted, dep_delete_err = M.packdel(dep)
+          if dep_deleted == false then
+            error(dep_delete_err, 0)
+          end
+        elseif util.is_cond(dep) then
+          local dep_ok, dep_err = M.load(dep)
+          if dep_ok == false then
+            error(dep_err, 0)
+          end
         end
       end
     end
@@ -69,11 +77,7 @@ M.load = function(spec)
     return false, formatted_err
   end
 
-  if should_mark_loaded then
-    state.loaded[plugin_name] = true
-  else
-    state.loaded[plugin_name] = nil
-  end
+  state.loaded[plugin_name] = true
 
   state.failed[plugin_name] = nil
   return true

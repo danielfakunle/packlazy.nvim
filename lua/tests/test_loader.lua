@@ -9,6 +9,7 @@ local function setup_env(child)
 
     pack_add_calls = {}
     pack_del_calls = {}
+    notifications = {}
     events = {}
     setup_opts = nil
     setup_called = 0
@@ -22,6 +23,10 @@ local function setup_env(child)
     vim.pack.del = function(names)
       table.insert( pack_del_calls, names)
       table.insert( events, "del:" .. names[1])
+    end
+
+    vim.notify = function(msg, level)
+      table.insert(notifications, { msg = msg, level = level })
     end
 
     state = require("packlazy.state")
@@ -64,6 +69,21 @@ describe("packlazy.loader", function()
       eq(child.lua_get("#pack_del_calls"), 1)
       eq(child.lua_get("pack_del_calls[1][1]"), "mini")
     end)
+
+    it("notifies at info level when plugin is not installed", function()
+      child.lua([[
+        vim.pack.del = function(_)
+          error("Plugin `mini` is not installed")
+        end
+
+        del_ok = loader.packdel({ "nvim-mini/mini.nvim" })
+      ]])
+
+      eq(child.lua_get("del_ok"), true)
+      eq(child.lua_get("#notifications"), 1)
+      eq(child.lua_get("notifications[1].level"), child.lua_get("vim.log.levels.INFO"))
+      eq(child.lua_get("notifications[1].msg:find('not installed', 1, true) ~= nil"), true)
+    end)
   end)
 
   describe("load()", function()
@@ -87,27 +107,39 @@ describe("packlazy.loader", function()
       eq(child.lua_get("#pack_add_calls"), 0)
     end)
 
-    it("returns early when disabled by boolean", function()
-      child.lua([[  loader.load({ "nvim-mini/mini.nvim", enabled = false }) ]])
-
-      eq(child.lua_get("#pack_add_calls"), 0)
-      eq(child.lua_get("#pack_del_calls"), 1)
-      eq(child.lua_get("pack_del_calls[1][1]"), "mini")
-    end)
-
-    it("returns early when disabled by callback", function()
+    it("skips disabled dependency and uninstalls it", function()
       child.lua([[
-         loader.load({
-          "nvim-mini/mini.nvim",
-          enabled = function()
-            return false
-          end,
+        loader.load({
+          "owner/main.nvim",
+          dependencies = {
+            { "owner/dep.nvim", enabled = false },
+          },
         })
       ]])
 
-      eq(child.lua_get("#pack_add_calls"), 0)
+      eq(child.lua_get("#pack_add_calls"), 1)
       eq(child.lua_get("#pack_del_calls"), 1)
-      eq(child.lua_get("pack_del_calls[1][1]"), "mini")
+      eq(child.lua_get("pack_del_calls[1][1]"), "dep")
+      eq(child.lua_get("pack_add_calls[1].repos[1]"), "https://github.com/owner/main.nvim")
+      eq(child.lua_get("state.loaded.dep == nil"), true)
+      eq(child.lua_get("state.loaded.main"), true)
+    end)
+
+    it("skips dependency when cond is false without uninstalling", function()
+      child.lua([[
+        loader.load({
+          "owner/main.nvim",
+          dependencies = {
+            { "owner/dep.nvim", cond = false },
+          },
+        })
+      ]])
+
+      eq(child.lua_get("#pack_add_calls"), 1)
+      eq(child.lua_get("#pack_del_calls"), 0)
+      eq(child.lua_get("pack_add_calls[1].repos[1]"), "https://github.com/owner/main.nvim")
+      eq(child.lua_get("state.loaded.dep == nil"), true)
+      eq(child.lua_get("state.loaded.main"), true)
     end)
 
     it("loads dependencies before parent and runs init before packadd", function()

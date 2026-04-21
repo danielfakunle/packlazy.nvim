@@ -49,6 +49,45 @@ describe("packlazy.util", function()
         return false
       end }), false)
     end)
+
+    it("passes spec to enabled callback", function()
+      local seen = nil
+      local spec = {
+        "nvim-mini/mini.nvim",
+        enabled = function(plugin)
+          seen = plugin[1]
+          return true
+        end,
+      }
+
+      eq(util.is_enabled(spec), true)
+      eq(seen, "nvim-mini/mini.nvim")
+    end)
+  end)
+
+  describe("is_cond()", function()
+    it("returns true when cond is missing", function()
+      eq(util.is_cond({ "nvim-mini/mini.nvim" }), true)
+    end)
+
+    it("returns the boolean value when cond is boolean", function()
+      eq(util.is_cond({ "nvim-mini/mini.nvim", cond = true }), true)
+      eq(util.is_cond({ "nvim-mini/mini.nvim", cond = false }), false)
+    end)
+
+    it("evaluates cond callback and passes spec", function()
+      local seen = nil
+      local spec = {
+        "nvim-mini/mini.nvim",
+        cond = function(plugin)
+          seen = plugin[1]
+          return false
+        end,
+      }
+
+      eq(util.is_cond(spec), false)
+      eq(seen, "nvim-mini/mini.nvim")
+    end)
   end)
 
   describe("get_plugin_repo()", function()

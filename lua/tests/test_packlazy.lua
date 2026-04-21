@@ -26,12 +26,17 @@ describe("packlazy", function()
           table.insert(loaded_specs, spec[1])
           return true
         end,
+        packdel = function(spec)
+          table.insert(deleted_specs, spec[1])
+          return true
+        end,
       }
       package.loaded["packlazy.handlers.lazy"] = { register = function(_) end }
       package.loaded["packlazy.handlers.event"] = { register = function(_) end }
       package.loaded["packlazy.handlers.cmd"] = { register = function(_) end }
 
       loaded_specs = {}
+      deleted_specs = {}
       notifications = {}
       vim.notify = function(msg, level)
         table.insert(notifications, { msg = msg, level = level })
@@ -49,5 +54,107 @@ describe("packlazy", function()
 
     eq(child.lua_get("loaded_specs"), { "owner/ok.nvim" })
     eq(child.lua_get("#notifications"), 1)
+  end)
+
+  it("uninstalls and skips plugins with enabled=false", function()
+    child.lua([[
+      package.loaded.packlazy = nil
+      package.loaded["packlazy.loader"] = {
+        load = function(spec)
+          table.insert(loaded_specs, spec[1])
+          return true
+        end,
+        packdel = function(spec)
+          table.insert(deleted_specs, spec[1])
+          return true
+        end,
+      }
+
+      lazy_registered = 0
+      event_registered = 0
+      cmd_registered = 0
+      loaded_specs = {}
+      deleted_specs = {}
+
+      package.loaded["packlazy.handlers.lazy"] = {
+        register = function(_)
+          lazy_registered = lazy_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.event"] = {
+        register = function(_)
+          event_registered = event_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.cmd"] = {
+        register = function(_)
+          cmd_registered = cmd_registered + 1
+        end,
+      }
+
+      local state = require("packlazy.state")
+      state.plugins = {}
+
+      local packlazy = require("packlazy")
+      packlazy.add({ "owner/disabled.nvim", enabled = false, lazy = false, event = "BufRead", cmd = "MyCmd" })
+    ]])
+
+    eq(child.lua_get("deleted_specs"), { "owner/disabled.nvim" })
+    eq(child.lua_get("loaded_specs"), {})
+    eq(child.lua_get("lazy_registered"), 0)
+    eq(child.lua_get("event_registered"), 0)
+    eq(child.lua_get("cmd_registered"), 0)
+    eq(child.lua_get("next(require('packlazy.state').plugins) == nil"), true)
+  end)
+
+  it("skips plugins with cond=false without uninstalling", function()
+    child.lua([[
+      package.loaded.packlazy = nil
+      package.loaded["packlazy.loader"] = {
+        load = function(spec)
+          table.insert(loaded_specs, spec[1])
+          return true
+        end,
+        packdel = function(spec)
+          table.insert(deleted_specs, spec[1])
+          return true
+        end,
+      }
+
+      lazy_registered = 0
+      event_registered = 0
+      cmd_registered = 0
+      loaded_specs = {}
+      deleted_specs = {}
+
+      package.loaded["packlazy.handlers.lazy"] = {
+        register = function(_)
+          lazy_registered = lazy_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.event"] = {
+        register = function(_)
+          event_registered = event_registered + 1
+        end,
+      }
+      package.loaded["packlazy.handlers.cmd"] = {
+        register = function(_)
+          cmd_registered = cmd_registered + 1
+        end,
+      }
+
+      local state = require("packlazy.state")
+      state.plugins = {}
+
+      local packlazy = require("packlazy")
+      packlazy.add({ "owner/conditional.nvim", cond = false, lazy = false, event = "BufRead", cmd = "MyCmd" })
+    ]])
+
+    eq(child.lua_get("deleted_specs"), {})
+    eq(child.lua_get("loaded_specs"), {})
+    eq(child.lua_get("lazy_registered"), 0)
+    eq(child.lua_get("event_registered"), 0)
+    eq(child.lua_get("cmd_registered"), 0)
+    eq(child.lua_get("next(require('packlazy.state').plugins) == nil"), true)
   end)
 end)

@@ -20,7 +20,8 @@ local M = {}
 ---@field config? boolean|fun() Function to run after the plugin is loaded
 ---@field dependencies? PluginSpec[] List of plugin specifications that this plugin depends on
 ---@field opts? table|fun():table Options to pass to the plugin's config function
----@field enabled? boolean|fun():boolean Whether to enable the plugin, defaults to true
+---@field enabled? boolean|fun(spec?:PluginSpec):boolean Whether to enable the plugin, defaults to true
+---@field cond? boolean|fun(spec?:PluginSpec):boolean Like `enabled` but does not uninstall when false
 ---@field event? string|string[]|{event:string|string[],pattern?:string} Lazy load on event(s), e.g. "BufRead"
 ---@field cmd? string|string[]|fun():string[] Lazy load when command(s) are invoked
 
@@ -33,6 +34,19 @@ function M.add(plugins)
   for _, spec in ipairs(spec_list) do
     local ok, err = xpcall(function()
       local plugin_name = util.get_plugin_name(spec)
+
+      if not util.is_enabled(spec) then
+        local deleted, delete_err = loader.packdel(spec)
+        if deleted == false then
+          errors.notify(delete_err)
+        end
+        return
+      end
+
+      if not util.is_cond(spec) then
+        return
+      end
+
       state.plugins[plugin_name] = spec
       if spec.lazy then
         handlers.lazy.register(spec)

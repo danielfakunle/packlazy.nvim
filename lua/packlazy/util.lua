@@ -22,9 +22,21 @@ function M.is_enabled(spec)
   if spec.enabled == nil then
     return true
   elseif type(spec.enabled) == "function" then
-    return spec.enabled()
+    return spec.enabled(spec)
   else
     return spec.enabled
+  end
+end
+
+---@param spec PluginSpec
+---@return boolean cond Whether plugin conditions pass
+function M.is_cond(spec)
+  if spec.cond == nil then
+    return true
+  elseif type(spec.cond) == "function" then
+    return spec.cond(spec)
+  else
+    return spec.cond
   end
 end
 
