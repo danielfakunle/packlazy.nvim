@@ -23,6 +23,13 @@ describe("packlazy.util", function()
       eq(util.create_plugin_spec_list(spec_list), spec_list)
     end)
 
+    it("normalizes a list of plugin strings into specs", function()
+      eq(util.create_plugin_spec_list({ "nvim-mini/mini.nvim", "folke/lazydev.nvim" }), {
+        { "nvim-mini/mini.nvim" },
+        { "folke/lazydev.nvim" },
+      })
+    end)
+
     it("errors on invalid input", function()
       expect.error(function()
         util.create_plugin_spec_list(123)
@@ -160,6 +167,26 @@ describe("packlazy.util", function()
       eq(spec_list[2].enabled, false)
       eq(spec_list[2].dependencies[1].lazy, false)
       eq(spec_list[2].dependencies[1].enabled, true)
+
+      config.defaults.lazy = old_lazy
+    end)
+
+    it("normalizes string dependencies before applying defaults", function()
+      local old_lazy = config.defaults.lazy
+      config.defaults.lazy = false
+
+      local spec_list = {
+        {
+          "owner/main.nvim",
+          dependencies = { "owner/dep.nvim" },
+        },
+      }
+
+      util.set_plugin_defaults(spec_list)
+
+      eq(spec_list[1].dependencies[1][1], "owner/dep.nvim")
+      eq(spec_list[1].dependencies[1].lazy, false)
+      eq(spec_list[1].dependencies[1].enabled, true)
 
       config.defaults.lazy = old_lazy
     end)

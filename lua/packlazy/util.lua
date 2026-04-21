@@ -2,15 +2,43 @@ local config = require("packlazy.config").defaults
 
 local M = {}
 
+---@param spec any
+---@return PluginSpec
+local function normalize_plugin_spec(spec)
+  if type(spec) == "string" then
+    return { spec }
+  end
+
+  if type(spec) == "table" and type(spec[1]) == "string" then
+    return spec
+  end
+
+  error("Invalid plugin specification: " .. tostring(spec))
+end
+
 ---@param input string | PluginSpec | PluginSpec[]
 ---@return PluginSpec[] spec_list list of plugin specifications
 function M.create_plugin_spec_list(input)
   if type(input) == "string" then
     return { { input } }
-  elseif type(input) == "table" and input[1] and type(input[1]) == "string" then
-    return { input }
   elseif type(input) == "table" then
-    return input
+    local has_named_keys = false
+    for key, _ in pairs(input) do
+      if type(key) ~= "number" then
+        has_named_keys = true
+        break
+      end
+    end
+
+    if has_named_keys and type(input[1]) == "string" then
+      return { input }
+    end
+
+    local spec_list = {}
+    for _, spec in ipairs(input) do
+      table.insert(spec_list, normalize_plugin_spec(spec))
+    end
+    return spec_list
   else
     error("Invalid plugin specification: " .. tostring(input))
   end
@@ -65,7 +93,10 @@ end
 ---@param spec_list PluginSpec[]
 ---@return PluginSpec[] spec_list with defaults applied
 function M.set_plugin_defaults(spec_list)
-  for _, spec in ipairs(spec_list) do
+  for index, spec in ipairs(spec_list) do
+    spec = normalize_plugin_spec(spec)
+    spec_list[index] = spec
+
     if spec.lazy == nil then
       spec.lazy = config.lazy
     end
@@ -76,7 +107,7 @@ function M.set_plugin_defaults(spec_list)
       spec.enabled = true
     end
     if spec.dependencies then
-      spec.dependencies = M.set_plugin_defaults(spec.dependencies)
+      spec.dependencies = M.set_plugin_defaults(M.create_plugin_spec_list(spec.dependencies))
     end
   end
   return spec_list
