@@ -4,7 +4,7 @@ local M = {}
 ---@field confirm boolean Whether to ask for confirmation before installing a plugin
 ---@field lazy boolean Whether to load plugins lazily by default
 M.defaults = {
-  confirm = true,
+  confirm = false,
   lazy = true,
 }
 
