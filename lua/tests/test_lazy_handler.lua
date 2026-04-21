@@ -4,8 +4,32 @@ local child = require("tests.helpers").new_child_neovim()
 local setup_lazy_handler_env = function()
   child.lua([[
     package.loaded["packlazy.handlers.lazy"] = nil
+    package.loaded["packlazy.state"] = {
+      plugins = {},
+      loading = {},
+      loaded = {},
+      failed = {},
+    }
+
+    package.preload["plugin"] = function()
+      return { name = "plugin" }
+    end
+
+    package.preload["plugin.config"] = function()
+      return { name = "plugin.config" }
+    end
+
+    package.preload["custom"] = function()
+      return { name = "custom" }
+    end
+
     package.loaded["packlazy.loader"] = {
       load = function(spec)
+        local plugin_name = spec.name or spec[1]:match(".*/(.*)")
+        plugin_name = plugin_name:gsub("/+$", "")
+        plugin_name = plugin_name:gsub("%.git$", "")
+        plugin_name = plugin_name:gsub("%.nvim$", "")
+        require("packlazy.state").loaded[plugin_name] = true
         load_call_count = load_call_count + 1
         last_loaded_spec = spec
       end,
@@ -58,7 +82,7 @@ describe("packlazy.handlers.lazy", function()
       ]])
 
       eq(child.lua_get("loader_fn_type"), "function")
-      eq(child.lua_get("loader_fn_result == nil"), true)
+      eq(child.lua_get("loader_fn_result.name"), "plugin")
       eq(child.lua_get("load_call_count"), 1)
       eq(child.lua_get("last_loaded_spec[1]"), "owner/plugin.nvim")
     end)
@@ -70,12 +94,24 @@ describe("packlazy.handlers.lazy", function()
 
         local loader_fn = package.loaders[1]("plugin.config")
         loader_fn_type = type(loader_fn)
-        loader_fn()
+        loader_fn_result = loader_fn()
       ]])
 
       eq(child.lua_get("loader_fn_type"), "function")
+      eq(child.lua_get("loader_fn_result.name"), "plugin.config")
       eq(child.lua_get("load_call_count"), 1)
       eq(child.lua_get("last_loaded_spec[1]"), "owner/plugin.nvim")
+    end)
+
+    it("skips interception when plugin is already loaded", function()
+      child.lua([[
+        require("packlazy.state").loaded.plugin = true
+        lazy_handler.register({ "owner/plugin.nvim" })
+        already_loaded_result = package.loaders[1]("plugin")
+      ]])
+
+      eq(child.lua_get("already_loaded_result == nil"), true)
+      eq(child.lua_get("load_call_count"), 0)
     end)
 
     it("does not match unrelated modules", function()
