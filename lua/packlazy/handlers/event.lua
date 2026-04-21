@@ -5,7 +5,7 @@ local errors = require("packlazy.errors")
 local M = {}
 local augroup = vim.api.nvim_create_augroup("packlazy", { clear = false })
 
-local user_events = {
+local user_event_aliases = {
   VeryLazy = true,
 }
 
@@ -40,7 +40,7 @@ end
 ---@return string[] events, string[]? user_events
 local parse_events = function(spec)
   if type(spec.event) == "string" then
-    if user_events[spec.event] then
+    if user_event_aliases[spec.event] then
       return { spec.event }, { spec.event }
     end
     return { spec.event }
@@ -53,7 +53,7 @@ local parse_events = function(spec)
     local user_evts = {}
     ---@diagnostic disable-next-line: param-type-mismatch
     for _, evt in ipairs(spec.event) do
-      if user_events[evt] then
+      if user_event_aliases[evt] then
         table.insert(user_evts, evt)
       end
     end
