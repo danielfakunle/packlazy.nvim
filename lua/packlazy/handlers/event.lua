@@ -39,30 +39,31 @@ end
 ---@param spec PluginSpec
 ---@return string[] events, string[]? user_events
 local parse_events = function(spec)
-  if type(spec.event) == "string" then
-    if user_event_aliases[spec.event] then
-      return { spec.event }, { spec.event }
-    end
-    return { spec.event }
-  end
-  if type(spec.event) == "table" and spec.event.event then
-    ---@diagnostic disable-next-line: return-type-mismatch
-    return type(spec.event.event) == "string" and { spec.event.event } or spec.event.event
-  end
-  if type(spec.event) == "table" then
-    local user_evts = {}
-    ---@diagnostic disable-next-line: param-type-mismatch
-    for _, evt in ipairs(spec.event) do
+  local split_events = function(events)
+    local native_events = {}
+    local user_events = {}
+
+    for _, evt in ipairs(events) do
       if user_event_aliases[evt] then
-        table.insert(user_evts, evt)
+        table.insert(user_events, evt)
+      else
+        table.insert(native_events, evt)
       end
     end
-    if #user_evts > 0 then
-      ---@diagnostic disable-next-line: return-type-mismatch
-      return spec.event, user_evts
-    end
-    ---@diagnostic disable-next-line: return-type-mismatch
-    return spec.event
+
+    return native_events, (#user_events > 0 and user_events or nil)
+  end
+
+  if type(spec.event) == "string" then
+    return split_events({ spec.event })
+  end
+  if type(spec.event) == "table" and spec.event.event then
+    local events = type(spec.event.event) == "string" and { spec.event.event } or spec.event.event
+    return split_events(events)
+  end
+  if type(spec.event) == "table" then
+    ---@diagnostic disable-next-line: param-type-mismatch
+    return split_events(spec.event)
   end
   error("Invalid event specification for plugin " .. util.get_plugin_name(spec), 0)
 end
@@ -75,16 +76,18 @@ function M.register(spec)
   M.bridge_user_events()
   local events, user_events = parse_events(spec)
   local pattern = type(spec.event) == "table" and spec.event.pattern or nil
-  vim.api.nvim_create_autocmd(events, {
-    pattern = pattern,
-    callback = function()
-      local ok, err = loader.load(spec)
-      if ok == false then
-        errors.notify(err)
-      end
-    end,
-    once = true,
-  })
+  if #events > 0 then
+    vim.api.nvim_create_autocmd(events, {
+      pattern = pattern,
+      callback = function()
+        local ok, err = loader.load(spec)
+        if ok == false then
+          errors.notify(err)
+        end
+      end,
+      once = true,
+    })
+  end
   if user_events then
     for _, evt in ipairs(user_events) do
       vim.api.nvim_create_autocmd("User", {

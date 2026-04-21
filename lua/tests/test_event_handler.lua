@@ -111,6 +111,27 @@ describe("packlazy.handlers.event", function()
       eq(child.lua_get("last_loaded_spec[1]"), "owner/plugin.nvim")
     end)
 
+    it("registers User autocmd for VeryLazy string event", function()
+      child.lua([[
+        local spec = { "owner/plugin.nvim", event = "VeryLazy" }
+        event_handler.register(spec)
+
+        registered_autocmds = #created_autocmds
+        user_autocmd_event = created_autocmds[2].events
+        user_autocmd_pattern = created_autocmds[2].opts.pattern
+        user_autocmd_once = created_autocmds[2].opts.once
+
+        created_autocmds[2].opts.callback()
+      ]])
+
+      eq(child.lua_get("registered_autocmds"), 2)
+      eq(child.lua_get("user_autocmd_event"), "User")
+      eq(child.lua_get("user_autocmd_pattern"), "VeryLazy")
+      eq(child.lua_get("user_autocmd_once"), true)
+      eq(child.lua_get("load_call_count"), 1)
+      eq(child.lua_get("last_loaded_spec[1]"), "owner/plugin.nvim")
+    end)
+
     it("supports event table with event list and pattern", function()
       child.lua([[
         local spec = {
