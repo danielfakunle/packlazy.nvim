@@ -7,6 +7,7 @@ local handlers = {
   lazy = require("packlazy.handlers.lazy"),
   event = require("packlazy.handlers.event"),
   cmd = require("packlazy.handlers.cmd"),
+  keys = require("packlazy.handlers.keys"),
 }
 
 local M = {}
@@ -24,6 +25,15 @@ local M = {}
 ---@field cond? boolean|fun(spec?:PluginSpec):boolean Like `enabled` but does not uninstall when false
 ---@field event? string|string[]|{event:string|string[],pattern?:string} Lazy load on event(s), e.g. "BufRead"
 ---@field cmd? string|string[]|fun():string[] Lazy load when command(s) are invoked
+---@field keys? string|string[]|KeySpec|KeySpec[] Lazy load on key press
+
+---@class KeySpec
+---@field [1] string Left-hand side mapping
+---@field [2]? string|fun() Right-hand side mapping
+---@field mode? string|string[] Mapping mode(s)
+---@field desc? string Mapping description
+---@field remap? boolean Whether mapping is remapped
+---@field nowait? boolean Whether mapping is nowait
 
 M.setup = setup
 
@@ -56,6 +66,9 @@ function M.add(plugins)
       end
       if spec.cmd then
         handlers.cmd.register(spec)
+      end
+      if spec.keys then
+        handlers.keys.register(spec)
       end
       if not spec.lazy then
         local loaded, load_err = loader.load(spec)
